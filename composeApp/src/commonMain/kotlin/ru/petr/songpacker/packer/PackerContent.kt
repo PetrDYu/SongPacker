@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 
@@ -88,27 +91,5 @@ fun PackerContent(component: PackerComponent, modifier: Modifier = Modifier) {
 
 @Composable
 fun SongPartCard(songPart: SongPart, modifier: Modifier = Modifier) {
-    var visible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible, // Можно управлять видимостью для анимации удаления
-        enter = slideInVertically(initialOffsetY = { -40 }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { -40 }) + fadeOut()
-    ) {
-        Card(
-            modifier = modifier
-        ) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(
-                    text = songPart.type.displayName,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(songPart.text)
-            }
-        }
-    }
 }
