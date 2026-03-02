@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -32,7 +33,8 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
     }
 
     val type by component.type.subscribeAsState()
-    val text by component.text.subscribeAsState()
+//    val text by component.text.subscribeAsState()
+    val strings by component.strings.subscribeAsState()
 
     AnimatedVisibility(
         visible = visible, // Можно управлять видимостью для анимации удаления
@@ -47,16 +49,25 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                     text = type.displayName,
                     style = MaterialTheme.typography.titleMedium
                 )
-                SelectionContainer {
+                for (string in strings) {
                     Text(
-                        text,
+                        string,
                         modifier = Modifier
-                            .pointerInput(Unit) {
-                                detectTapGestures { offset ->
-
-                                }
+                            .pointerInput(string) {
+                                detectTapGestures(
+                                    onTap = component::onTextTap
+                                )
+                            }
+                            .pointerInput(string) {
+                                detectDragGestures(
+                                    onDragStart = component::onTextDragStart,
+                                    onDragEnd = component::onTextDragEndOrCancel,
+                                    onDrag = component::onTextDrag,
+                                    onDragCancel = component::onTextDragEndOrCancel
+                                )
                             },
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        onTextLayout = component::onTextLayout
                     )
                 }
             }

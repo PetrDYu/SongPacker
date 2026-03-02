@@ -1,5 +1,8 @@
 package ru.petr.songpacker.packer.songPart
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.text.TextLayoutResult
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
@@ -23,6 +26,11 @@ class DefaultSongPartComponent(
     private val _stringRanges = MutableValue(emptyList<Pair<Int, Int>>())
     override val stringRanges: Value<List<Pair<Int, Int>>> = _stringRanges
 
+    private val _strings = MutableValue(emptyList<String>())
+    override val strings: Value<List<String>> = _strings
+
+    private var textLayoutResults: MutableList<TextLayoutResult?> = mutableListOf()
+
     init {
         // Initialize string ranges for the initial text
         updateText(initialText)
@@ -34,7 +42,9 @@ class DefaultSongPartComponent(
 
     override fun updateText(newText: String) {
         if (newText.isNotBlank()) {
+            textLayoutResults = mutableListOf()
             val stringRangesMutable = mutableListOf<Pair<Int, Int>>()
+            val stringsMutable = mutableListOf<String>()
             var currentPos = 0
             // Регулярное выражение для любого разделителя строк: \n, \r, \r\n, \n\r
             val lineBreakRegex = Regex("""\r\n|\n\r|\r|\n""")
@@ -42,6 +52,8 @@ class DefaultSongPartComponent(
             val delimiters = lineBreakRegex.findAll(newText).map { it.value }.toList()
 
             for ((index, string) in strings.withIndex()) {
+                stringsMutable.add(string)
+                textLayoutResults.add(null)
                 val start = currentPos
                 val end = currentPos + string.length
                 stringRangesMutable.add(start to end)
@@ -52,11 +64,35 @@ class DefaultSongPartComponent(
                 }
             }
             _stringRanges.value = stringRangesMutable
+            _strings.value = stringsMutable
         }
     }
 
     override fun appendLayer(newLayer: SongLayer) {
         TODO("Not yet implemented")
+    }
+
+    override fun onTextLayout(stringIdx: Int, textLayoutResult: TextLayoutResult) {
+        textLayoutResults[stringIdx] = textLayoutResult
+    }
+
+    override fun onTextTap(offset: Offset) {
+        // TODO
+    }
+
+    override fun onTextDragStart(offset: Offset) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onTextDrag(
+        change: PointerInputChange,
+        offset: Offset
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onTextDragEndOrCancel() {
+
     }
 
 }
