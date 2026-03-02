@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
 
 @Composable
 fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier) {
@@ -29,6 +30,9 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
     LaunchedEffect(Unit) {
         visible = true
     }
+
+    val type by component.type.subscribeAsState()
+    val text by component.text.subscribeAsState()
 
     AnimatedVisibility(
         visible = visible, // Можно управлять видимостью для анимации удаления
@@ -40,18 +44,19 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(
-                    text = songPart.type.displayName,
+                    text = type.displayName,
                     style = MaterialTheme.typography.titleMedium
                 )
                 SelectionContainer {
                     Text(
-                        songPart.text,
+                        text,
                         modifier = Modifier
                             .pointerInput(Unit) {
                                 detectTapGestures { offset ->
 
                                 }
-                            }
+                            },
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }

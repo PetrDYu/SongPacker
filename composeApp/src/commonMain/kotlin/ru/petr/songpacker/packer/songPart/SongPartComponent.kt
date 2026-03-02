@@ -3,6 +3,7 @@ package ru.petr.songpacker.packer.songPart
 import com.arkivanov.decompose.value.Value
 
 interface SongPartComponent {
+    val id: String
     val type: Value<SongPartTypes>
     val text: Value<String>
     val layers: Value<List<SongLayer>>
