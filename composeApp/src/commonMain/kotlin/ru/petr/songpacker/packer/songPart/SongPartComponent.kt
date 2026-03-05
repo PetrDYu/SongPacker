@@ -1,7 +1,9 @@
 package ru.petr.songpacker.packer.songPart
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.TextLayoutResult
 import com.arkivanov.decompose.value.Value
 
@@ -13,6 +15,8 @@ interface SongPartComponent {
     val stringRanges: Value<List<Pair<Int, Int>>>
     val strings: Value<List<String>>
 
+    val stringSelections: Value<List<SelectionRect>>
+
     fun updateType(newType: SongPartTypes)
 
     fun updateText(newText: String)
@@ -21,10 +25,12 @@ interface SongPartComponent {
 
     fun onTextLayout(stringIdx: Int, textLayoutResult: TextLayoutResult)
 
-    fun onTextTap(offset: Offset)
-    fun onTextDragStart(offset: Offset)
-    fun onTextDrag(change: PointerInputChange, offset: Offset)
-    fun onTextDragEndOrCancel()
+    fun onTextPositioned(stringIdx: Int, layoutCoordinates: LayoutCoordinates)
+
+    fun onTextTap(stringIdx: Int, offset: Offset)
+    fun onTextDragStart(stringIdx: Int, offset: Offset)
+    fun onTextDrag(stringIdx: Int, change: PointerInputChange)
+    fun onTextDragEndOrCancel(stringIdx: Int)
 }
 
 enum class SongPartTypes(val displayName: String) {
@@ -43,4 +49,15 @@ data class SongLayer(
     val end: Int
 ) {
 
+}
+
+data class SelectionRect(
+    val topLeft: Offset,
+    val size: Size
+) {
+    companion object {
+        fun empty(): SelectionRect {
+            return SelectionRect(Offset(0f, 0f), Size(0f, 0f))
+        }
+    }
 }
