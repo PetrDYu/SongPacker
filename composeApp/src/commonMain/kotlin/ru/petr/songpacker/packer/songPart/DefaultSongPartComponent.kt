@@ -20,14 +20,10 @@ class DefaultSongPartComponent(
     private val _type = MutableValue(initialType)
     override val type: Value<SongPartTypes> = _type
 
-    private val _text = MutableValue(initialText)
-    override val text: Value<String> = _text
-
     private val _layers = MutableValue(emptyList<SongLayer>())
     override val layers: Value<List<SongLayer>> = _layers
 
-    private val _stringRanges = MutableValue(emptyList<Pair<Int, Int>>())
-    override val stringRanges: Value<List<Pair<Int, Int>>> = _stringRanges
+    private var stringRanges = emptyList<Pair<Int, Int>>()
 
     private val _strings = MutableValue(emptyList<String>())
     override val strings: Value<List<String>> = _strings
@@ -38,6 +34,9 @@ class DefaultSongPartComponent(
 
     private val _stringSelections = MutableValue(emptyList<SelectionRect>())
     override val stringSelections: Value<List<SelectionRect>> = _stringSelections
+
+    private val _arrowEndings = MutableValue(emptyList<Pair<Boolean, Boolean>>())
+    override val arrowEndings: Value<List<Pair<Boolean, Boolean>>> = _arrowEndings
 
     private var textLayoutCoordinates: MutableList<LayoutCoordinates?> = mutableListOf()
 
@@ -63,7 +62,6 @@ class DefaultSongPartComponent(
             textLayoutResults = mutableListOf()
             val stringRangesMutable = mutableListOf<Pair<Int, Int>>()
             val stringsMutable = mutableListOf<String>()
-            val stringSelectionsMutable = mutableListOf<SelectionRect>()
             textLayoutCoordinates = mutableListOf()
             var currentPos = 0
             // Регулярное выражение для любого разделителя строк: \n, \r, \r\n, \n\r
@@ -74,7 +72,6 @@ class DefaultSongPartComponent(
             for ((index, string) in strings.withIndex()) {
                 stringsMutable.add(string)
                 textLayoutResults.add(null)
-                stringSelectionsMutable.add(SelectionRect.empty())
                 textLayoutCoordinates.add(null)
 
                 val start = currentPos
@@ -87,9 +84,9 @@ class DefaultSongPartComponent(
                 }
             }
 
-            _stringRanges.value = stringRangesMutable
+            stringRanges = stringRangesMutable
             _strings.value = stringsMutable
-            _stringSelections.value = stringSelectionsMutable
+            clearSelection()
         }
     }
 
@@ -109,16 +106,15 @@ class DefaultSongPartComponent(
     }
 
     override fun onTextTap(stringIdx: Int, offset: Offset) {
-        resetSelection()
+        clearSelection()
     }
 
     override fun onTextDragStart(stringIdx: Int, offset: Offset) {
         println("start drag")
-        resetSelection()
-//        val stringIdx = getStringIdxByYCoord(offset.y)
+        clearSelection()
         if (stringIdx < _strings.value.size) {
             textLayoutResults[stringIdx]?.let { layoutResult ->
-                val charOffset = _stringRanges.value[stringIdx].first + layoutResult.getOffsetForPosition(offset)
+                val charOffset = stringRanges[stringIdx].first + layoutResult.getOffsetForPosition(offset)
                 selectionRange = charOffset .. charOffset
                 println(selectionRange)
             }
@@ -133,7 +129,7 @@ class DefaultSongPartComponent(
         val endStringIdx = getStringIdxByYCoord(change.position.y, stringIdx)
         if (endStringIdx < _strings.value.size) {
             textLayoutResults[endStringIdx]?.let { layoutResult ->
-                val dragEnd = _stringRanges.value[endStringIdx].first +
+                val dragEnd = stringRanges[endStringIdx].first +
                         layoutResult.getOffsetForPosition(change.position)
                 selectionRange.let { range ->
                     selectionRange = range.start .. dragEnd
@@ -141,10 +137,6 @@ class DefaultSongPartComponent(
             }
             recalcSelection()
         }
-    }
-
-    override fun onTextDragEndOrCancel(stringIdx: Int) {
-
     }
 
     private fun getStringIdxByYCoord(y: Float, baseStringIdx: Int): Int {
@@ -164,24 +156,31 @@ class DefaultSongPartComponent(
         return retStringIdx
     }
 
-    private fun resetSelection() {
+    override fun clearSelection() {
         val stringSelectionsMutable = mutableListOf<SelectionRect>()
+        val arrowEndingsMutable = mutableListOf<Pair<Boolean, Boolean>>()
         for (strIdx in 0..<_strings.value.size) {
             stringSelectionsMutable.add(SelectionRect.empty())
+            arrowEndingsMutable.add(false to false)
         }
         _stringSelections.value = stringSelectionsMutable
+        _arrowEndings.value = arrowEndingsMutable
     }
 
     private fun recalcSelection() {
         val stringSelectionsMutable = mutableListOf<SelectionRect>()
+        val arrowEndingsMutable = mutableListOf<Pair<Boolean, Boolean>>()
+        var firstSelectedString = true
         for (stringIdx in 0..<_strings.value.size) {
-            if ((rightSelectionRange.first < stringRanges.value[stringIdx].second) &&
-                (stringRanges.value[stringIdx].first < rightSelectionRange.last)) {
+            if ((rightSelectionRange.first <= stringRanges[stringIdx].second) &&
+                (stringRanges[stringIdx].first <= rightSelectionRange.last)) {
                 // String stringIdx contain selected part
-                val firstSelectedCharIdx = maxOf(rightSelectionRange.first, stringRanges.value[stringIdx].first) -
-                        stringRanges.value[stringIdx].first
-                val lastSelectedCharIdx = minOf(rightSelectionRange.last, stringRanges.value[stringIdx].second) -
-                        stringRanges.value[stringIdx].first
+                val firstSelectedCharIdx = maxOf(rightSelectionRange.first, stringRanges[stringIdx].first) -
+                        stringRanges[stringIdx].first
+                val arrowStartEnding = firstSelectedString || (firstSelectedCharIdx != 0)
+                val lastSelectedCharIdx = minOf(rightSelectionRange.last, stringRanges[stringIdx].second) -
+                        stringRanges[stringIdx].first
+                val arrowEndEnding = (lastSelectedCharIdx != _strings.value[stringIdx].length) || (rightSelectionRange.last <= stringRanges[stringIdx].second)
                 val leftSelectionSide = textLayoutResults[stringIdx]!!.getHorizontalPosition(firstSelectedCharIdx, true)
                 val rightSelectionSide = textLayoutResults[stringIdx]!!.getHorizontalPosition(lastSelectedCharIdx, false)
                 val topSelectionSide = textLayoutResults[stringIdx]!!.getLineTop(0)
@@ -189,11 +188,15 @@ class DefaultSongPartComponent(
                 stringSelectionsMutable.add(SelectionRect(
                     Offset(leftSelectionSide, topSelectionSide),
                     Size(rightSelectionSide - leftSelectionSide, bottomSelectionSide - topSelectionSide)))
+                arrowEndingsMutable.add(arrowStartEnding to arrowEndEnding)
+                firstSelectedString = false
             } else {
                 stringSelectionsMutable.add(SelectionRect.empty())
+                arrowEndingsMutable.add(false to false)
             }
         }
         _stringSelections.value = stringSelectionsMutable
+        _arrowEndings.value = arrowEndingsMutable
     }
 
 }

@@ -10,12 +10,12 @@ import com.arkivanov.decompose.value.Value
 interface SongPartComponent {
     val id: String
     val type: Value<SongPartTypes>
-    val text: Value<String>
     val layers: Value<List<SongLayer>>
-    val stringRanges: Value<List<Pair<Int, Int>>>
     val strings: Value<List<String>>
 
     val stringSelections: Value<List<SelectionRect>>
+
+    val arrowEndings: Value<List<Pair<Boolean, Boolean>>>
 
     fun updateType(newType: SongPartTypes)
 
@@ -30,7 +30,8 @@ interface SongPartComponent {
     fun onTextTap(stringIdx: Int, offset: Offset)
     fun onTextDragStart(stringIdx: Int, offset: Offset)
     fun onTextDrag(stringIdx: Int, change: PointerInputChange)
-    fun onTextDragEndOrCancel(stringIdx: Int)
+
+    fun clearSelection()
 }
 
 enum class SongPartTypes(val displayName: String) {
@@ -46,9 +47,16 @@ enum class SongLayerTypes {
 data class SongLayer(
     val type: SongLayerTypes,
     val start: Int,
-    val end: Int
+    val end: Int,
+    val isPrelim: Boolean
 ) {
+    fun intersectWith(layer: SongLayer): Boolean {
+        return intersectWith(layer.type, layer.start, layer.end)
+    }
 
+    fun intersectWith(type: SongLayerTypes, start: Int, end: Int): Boolean {
+        return (type == this.type) && (start <= this.end) && (end >= this.start)
+    }
 }
 
 data class SelectionRect(
