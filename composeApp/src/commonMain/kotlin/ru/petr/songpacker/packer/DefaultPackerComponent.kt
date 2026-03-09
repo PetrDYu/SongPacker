@@ -47,4 +47,8 @@ class DefaultPackerComponent(
             _newText.value = ""
         }
     }
+
+    override fun clearAllSelections() {
+        _songParts.value.forEach { it.clearSelection() }
+    }
 }

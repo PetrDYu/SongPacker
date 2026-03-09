@@ -174,13 +174,13 @@ class DefaultSongPartComponent(
         for (stringIdx in 0..<_strings.value.size) {
             if ((rightSelectionRange.first <= stringRanges[stringIdx].second) &&
                 (stringRanges[stringIdx].first <= rightSelectionRange.last)) {
-                // String stringIdx contain selected part
+                // String stringIdx contains selected part
                 val firstSelectedCharIdx = maxOf(rightSelectionRange.first, stringRanges[stringIdx].first) -
                         stringRanges[stringIdx].first
-                val arrowStartEnding = firstSelectedString || (firstSelectedCharIdx != 0)
                 val lastSelectedCharIdx = minOf(rightSelectionRange.last, stringRanges[stringIdx].second) -
                         stringRanges[stringIdx].first
-                val arrowEndEnding = (lastSelectedCharIdx != _strings.value[stringIdx].length) || (rightSelectionRange.last <= stringRanges[stringIdx].second)
+                val arrowStartEnding = firstSelectedString
+                val arrowEndEnding = (rightSelectionRange.last <= stringRanges[stringIdx].second)
                 val leftSelectionSide = textLayoutResults[stringIdx]!!.getHorizontalPosition(firstSelectedCharIdx, true)
                 val rightSelectionSide = textLayoutResults[stringIdx]!!.getHorizontalPosition(lastSelectedCharIdx, false)
                 val topSelectionSide = textLayoutResults[stringIdx]!!.getLineTop(0)

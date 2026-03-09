@@ -12,4 +12,6 @@ interface PackerComponent {
 
     val songParts: Value<List<SongPartComponent>>
     fun onAddSongPart(type: SongPartTypes)
+
+    fun clearAllSelections()
 }
