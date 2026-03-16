@@ -9,6 +9,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
+import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.ArrowRange
 
 class DefaultSongPartComponent(
     componentContext: ComponentContext,
@@ -20,8 +22,8 @@ class DefaultSongPartComponent(
     private val _type = MutableValue(initialType)
     override val type: Value<SongPartTypes> = _type
 
-    private val _layers = MutableValue(emptyList<SongLayer>())
-    override val layers: Value<List<SongLayer>> = _layers
+    private val _layers = MutableValue(emptyList<SongLayerComponent>())
+    override val layers: Value<List<SongLayerComponent>> = _layers
 
     private var stringRanges = emptyList<Pair<Int, Int>>()
 
@@ -35,10 +37,9 @@ class DefaultSongPartComponent(
     private val _stringSelections = MutableValue(emptyList<SelectionRect>())
     override val stringSelections: Value<List<SelectionRect>> = _stringSelections
 
-    private val _arrowEndings = MutableValue(emptyList<Pair<Boolean, Boolean>>())
-    override val arrowEndings: Value<List<Pair<Boolean, Boolean>>> = _arrowEndings
-
     private var textLayoutCoordinates: MutableList<LayoutCoordinates?> = mutableListOf()
+
+    private var selectionIsActive = false
 
     private val rightSelectionRange: IntRange
         get() = if (selectionRange.first < selectionRange.last) {
@@ -66,10 +67,9 @@ class DefaultSongPartComponent(
             var currentPos = 0
             // Регулярное выражение для любого разделителя строк: \n, \r, \r\n, \n\r
             val lineBreakRegex = Regex("""\r\n|\n\r|\r|\n""")
-            val strings = newText.split(lineBreakRegex)
-            val delimiters = lineBreakRegex.findAll(newText).map { it.value }.toList()
+            val strings = newText.split(lineBreakRegex).map { it.trim() }
 
-            for ((index, string) in strings.withIndex()) {
+            for (string in strings) {
                 stringsMutable.add(string)
                 textLayoutResults.add(null)
                 textLayoutCoordinates.add(null)
@@ -77,20 +77,17 @@ class DefaultSongPartComponent(
                 val start = currentPos
                 val end = currentPos + string.length
                 stringRangesMutable.add(start to end)
-                // Добавляем длину разделителя (1 или 2 символа), кроме последней строки
-                if (index < strings.size - 1) {
-                    val delimiterLength = delimiters.getOrNull(index)?.length ?: 1
-                    currentPos = end + delimiterLength
-                }
+                currentPos = end + 1
             }
 
             stringRanges = stringRangesMutable
             _strings.value = stringsMutable
+            selectionIsActive = true
             clearSelection()
         }
     }
 
-    override fun appendLayer(newLayer: SongLayer) {
+    override fun appendLayer(newLayer: SongLayerComponent) {
         TODO("Not yet implemented")
     }
 
@@ -112,6 +109,7 @@ class DefaultSongPartComponent(
     override fun onTextDragStart(stringIdx: Int, offset: Offset) {
         println("start drag")
         clearSelection()
+        selectionIsActive = true
         if (stringIdx < _strings.value.size) {
             textLayoutResults[stringIdx]?.let { layoutResult ->
                 val charOffset = stringRanges[stringIdx].first + layoutResult.getOffsetForPosition(offset)
@@ -119,6 +117,9 @@ class DefaultSongPartComponent(
                 println(selectionRange)
             }
         }
+        val updatedLayers = _layers.value.toMutableList()
+        updatedLayers.add(SongLayerComponent.buildRepeatSongLayer(parentComponentContext = this))
+        _layers.value = updatedLayers
     }
 
     override fun onTextDrag(
@@ -139,6 +140,10 @@ class DefaultSongPartComponent(
         }
     }
 
+    override fun onTextDragEndOrCancel() {
+        SongLayerComponent.freezeCurrentRepeatSongLayer()
+    }
+
     private fun getStringIdxByYCoord(y: Float, baseStringIdx: Int): Int {
         var retStringIdx = _strings.value.size
         for (stringIdx in (_strings.value.size - 1) downTo 0) {
@@ -157,19 +162,28 @@ class DefaultSongPartComponent(
     }
 
     override fun clearSelection() {
-        val stringSelectionsMutable = mutableListOf<SelectionRect>()
-        val arrowEndingsMutable = mutableListOf<Pair<Boolean, Boolean>>()
-        for (strIdx in 0..<_strings.value.size) {
-            stringSelectionsMutable.add(SelectionRect.empty())
-            arrowEndingsMutable.add(false to false)
+        if (selectionIsActive) {
+            val stringSelectionsMutable = mutableListOf<SelectionRect>()
+            val arrowRanges = mutableListOf<ArrowRange>()
+            for (strIdx in 0..<_strings.value.size) {
+                stringSelectionsMutable.add(SelectionRect.empty())
+                arrowRanges.add(ArrowRange.emptyArrowRange)
+            }
+            _stringSelections.value = stringSelectionsMutable
+            val indexToDelete =
+                SongLayerComponent.getCurrentRepeatSongLayerIdxAndDelete(layers.value)
+            val updatedLayers = _layers.value.toMutableList()
+            if (indexToDelete in updatedLayers.indices) {
+                updatedLayers.removeAt(indexToDelete)
+            }
+            _layers.value = updatedLayers
+            selectionIsActive = false
         }
-        _stringSelections.value = stringSelectionsMutable
-        _arrowEndings.value = arrowEndingsMutable
     }
 
     private fun recalcSelection() {
         val stringSelectionsMutable = mutableListOf<SelectionRect>()
-        val arrowEndingsMutable = mutableListOf<Pair<Boolean, Boolean>>()
+        val arrowRanges = mutableListOf<ArrowRange>()
         var firstSelectedString = true
         for (stringIdx in 0..<_strings.value.size) {
             if ((rightSelectionRange.first <= stringRanges[stringIdx].second) &&
@@ -188,15 +202,20 @@ class DefaultSongPartComponent(
                 stringSelectionsMutable.add(SelectionRect(
                     Offset(leftSelectionSide, topSelectionSide),
                     Size(rightSelectionSide - leftSelectionSide, bottomSelectionSide - topSelectionSide)))
-                arrowEndingsMutable.add(arrowStartEnding to arrowEndEnding)
+                arrowRanges.add(ArrowRange(
+                    start = leftSelectionSide,
+                    startEnding = arrowStartEnding,
+                    end = rightSelectionSide,
+                    endEnding = arrowEndEnding
+                ))
                 firstSelectedString = false
             } else {
                 stringSelectionsMutable.add(SelectionRect.empty())
-                arrowEndingsMutable.add(false to false)
+                arrowRanges.add(ArrowRange.emptyArrowRange)
             }
         }
         _stringSelections.value = stringSelectionsMutable
-        _arrowEndings.value = arrowEndingsMutable
+        SongLayerComponent.updateCurrentRepeatSongLayer(layers.value, rightSelectionRange, arrowRanges)
     }
 
 }
