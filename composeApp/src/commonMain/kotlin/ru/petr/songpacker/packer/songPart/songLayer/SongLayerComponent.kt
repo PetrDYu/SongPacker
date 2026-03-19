@@ -10,15 +10,17 @@ import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.RepeatSongLa
 
 interface SongLayerComponent {
 
+    val id: Int
+
     companion object {
-        private var repeatTagId = 0
+        private var currentId = 0
 
         @OptIn(ExperimentalUuidApi::class)
         fun buildRepeatSongLayer(parentComponentContext: ComponentContext): RepeatSongLayerComponent {
             val key = "DefaultRepeatSongLayerComponent-${Uuid.random()}"
             return DefaultRepeatSongLayerComponent(
                 parentComponentContext.childContext(key),
-                repeatTagId
+                currentId
             )
         }
 
@@ -27,20 +29,20 @@ interface SongLayerComponent {
                                          newArrowRanges: List<ArrowRange>) {
             layers
                 .filterIsInstance<RepeatSongLayerComponent>()
-                .find { it.id == repeatTagId }
+                .find { it.id == currentId }
                 ?.update(newRepeatRange, newArrowRanges)
         }
 
         fun getCurrentRepeatSongLayerIdxAndDelete(layers: List<SongLayerComponent>): Int {
-            val index = layers.filterIsInstance<RepeatSongLayerComponent>().indexOfFirst { it.id == repeatTagId }
+            val index = layers.filterIsInstance<RepeatSongLayerComponent>().indexOfFirst { it.id == currentId }
             if (index != -1) {
-                repeatTagId--
+                currentId--
             }
             return index
         }
 
         fun freezeCurrentRepeatSongLayer() {
-            repeatTagId++
+            currentId++
         }
     }
 }

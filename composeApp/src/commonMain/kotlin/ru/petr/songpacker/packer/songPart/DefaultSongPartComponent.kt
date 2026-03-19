@@ -39,7 +39,8 @@ class DefaultSongPartComponent(
 
     private var textLayoutCoordinates: MutableList<LayoutCoordinates?> = mutableListOf()
 
-    private var selectionIsActive = false
+    private val _selectionIsActive = MutableValue(false)
+    override val selectionIsActive: Value<Boolean> = _selectionIsActive
 
     private val rightSelectionRange: IntRange
         get() = if (selectionRange.first < selectionRange.last) {
@@ -82,13 +83,9 @@ class DefaultSongPartComponent(
 
             stringRanges = stringRangesMutable
             _strings.value = stringsMutable
-            selectionIsActive = true
+            _selectionIsActive.value = true
             clearSelection()
         }
-    }
-
-    override fun appendLayer(newLayer: SongLayerComponent) {
-        TODO("Not yet implemented")
     }
 
     override fun onTextLayout(stringIdx: Int, textLayoutResult: TextLayoutResult) {
@@ -109,7 +106,7 @@ class DefaultSongPartComponent(
     override fun onTextDragStart(stringIdx: Int, offset: Offset) {
         println("start drag")
         clearSelection()
-        selectionIsActive = true
+        _selectionIsActive.value = true
         if (stringIdx < _strings.value.size) {
             textLayoutResults[stringIdx]?.let { layoutResult ->
                 val charOffset = stringRanges[stringIdx].first + layoutResult.getOffsetForPosition(offset)
@@ -162,7 +159,7 @@ class DefaultSongPartComponent(
     }
 
     override fun clearSelection() {
-        if (selectionIsActive) {
+        if (_selectionIsActive.value) {
             val stringSelectionsMutable = mutableListOf<SelectionRect>()
             val arrowRanges = mutableListOf<ArrowRange>()
             for (strIdx in 0..<_strings.value.size) {
@@ -177,7 +174,7 @@ class DefaultSongPartComponent(
                 updatedLayers.removeAt(indexToDelete)
             }
             _layers.value = updatedLayers
-            selectionIsActive = false
+            _selectionIsActive.value = false
         }
     }
 

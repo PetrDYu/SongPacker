@@ -4,7 +4,6 @@ import com.arkivanov.decompose.value.Value
 import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
 
 interface RepeatSongLayerComponent: SongLayerComponent {
-    val id: Int
 
     val arrowRanges: Value<List<ArrowRange>>
 

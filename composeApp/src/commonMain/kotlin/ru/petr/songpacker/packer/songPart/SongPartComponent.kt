@@ -16,11 +16,11 @@ interface SongPartComponent {
 
     val stringSelections: Value<List<SelectionRect>>
 
+    val selectionIsActive: Value<Boolean>
+
     fun updateType(newType: SongPartTypes)
 
     fun updateText(newText: String)
-
-    fun appendLayer(newLayer: SongLayerComponent)
 
     fun onTextLayout(stringIdx: Int, textLayoutResult: TextLayoutResult)
 
