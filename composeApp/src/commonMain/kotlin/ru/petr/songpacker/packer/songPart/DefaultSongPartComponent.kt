@@ -39,8 +39,10 @@ class DefaultSongPartComponent(
 
     private var textLayoutCoordinates: MutableList<LayoutCoordinates?> = mutableListOf()
 
-    private val _selectionIsActive = MutableValue(false)
-    override val selectionIsActive: Value<Boolean> = _selectionIsActive
+    private var selectionIsActive = false
+
+    private val _layersAreFrozen = MutableValue(true)
+    override val layersAreFrozen: Value<Boolean> = _layersAreFrozen
 
     private val rightSelectionRange: IntRange
         get() = if (selectionRange.first < selectionRange.last) {
@@ -83,7 +85,7 @@ class DefaultSongPartComponent(
 
             stringRanges = stringRangesMutable
             _strings.value = stringsMutable
-            _selectionIsActive.value = true
+            selectionIsActive = true
             clearSelection()
         }
     }
@@ -106,7 +108,8 @@ class DefaultSongPartComponent(
     override fun onTextDragStart(stringIdx: Int, offset: Offset) {
         println("start drag")
         clearSelection()
-        _selectionIsActive.value = true
+        selectionIsActive = true
+        _layersAreFrozen.value = false
         if (stringIdx < _strings.value.size) {
             textLayoutResults[stringIdx]?.let { layoutResult ->
                 val charOffset = stringRanges[stringIdx].first + layoutResult.getOffsetForPosition(offset)
@@ -139,6 +142,7 @@ class DefaultSongPartComponent(
 
     override fun onTextDragEndOrCancel() {
         SongLayerComponent.freezeCurrentRepeatSongLayer()
+        _layersAreFrozen.value = true
     }
 
     private fun getStringIdxByYCoord(y: Float, baseStringIdx: Int): Int {
@@ -159,7 +163,7 @@ class DefaultSongPartComponent(
     }
 
     override fun clearSelection() {
-        if (_selectionIsActive.value) {
+        if (selectionIsActive) {
             val stringSelectionsMutable = mutableListOf<SelectionRect>()
             val arrowRanges = mutableListOf<ArrowRange>()
             for (strIdx in 0..<_strings.value.size) {
@@ -167,15 +171,23 @@ class DefaultSongPartComponent(
                 arrowRanges.add(ArrowRange.emptyArrowRange)
             }
             _stringSelections.value = stringSelectionsMutable
-            val indexToDelete =
-                SongLayerComponent.getCurrentRepeatSongLayerIdxAndDelete(layers.value)
-            val updatedLayers = _layers.value.toMutableList()
-            if (indexToDelete in updatedLayers.indices) {
-                updatedLayers.removeAt(indexToDelete)
-            }
-            _layers.value = updatedLayers
-            _selectionIsActive.value = false
+            selectionIsActive = false
         }
+    }
+
+    override fun onDeleteLayerClick(layerIdx: Int) {
+        _layers.value.getOrNull(layerIdx)?.delete()
+    }
+
+    override fun onLayerHidden(layerId: Int) {
+        deleteLayer(layerId)
+    }
+
+    private fun deleteLayer(layerId: Int) {
+        val updatedLayers = _layers.value.toMutableList()
+        val idx = updatedLayers.indexOfFirst { it.id == layerId }
+        if (idx != -1) updatedLayers.removeAt(idx)
+        _layers.value = updatedLayers
     }
 
     private fun recalcSelection() {

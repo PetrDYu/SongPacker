@@ -16,7 +16,7 @@ interface SongPartComponent {
 
     val stringSelections: Value<List<SelectionRect>>
 
-    val selectionIsActive: Value<Boolean>
+    val layersAreFrozen: Value<Boolean>
 
     fun updateType(newType: SongPartTypes)
 
@@ -33,6 +33,10 @@ interface SongPartComponent {
     fun onTextDragEndOrCancel()
 
     fun clearSelection()
+
+    fun onDeleteLayerClick(layerIdx: Int)
+
+    fun onLayerHidden(layerId: Int)
 }
 
 enum class SongPartTypes(val displayName: String) {

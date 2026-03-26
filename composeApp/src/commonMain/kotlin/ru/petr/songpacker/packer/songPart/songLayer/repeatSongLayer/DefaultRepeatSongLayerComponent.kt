@@ -38,4 +38,15 @@ class DefaultRepeatSongLayerComponent(
         repeatRange = newRepeatRange
         _arrowRanges.value = newArrowRanges
     }
+
+    private val _visible = MutableValue(false)
+    override val visible: Value<Boolean> = _visible
+
+    override fun onShow() {
+        _visible.value = true
+    }
+
+    override fun delete() {
+        _visible.value = false
+    }
 }

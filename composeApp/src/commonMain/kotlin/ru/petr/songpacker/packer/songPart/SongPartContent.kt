@@ -71,13 +71,15 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
     val strings by component.strings.subscribeAsState()
     val stringSelections by component.stringSelections.subscribeAsState()
     val layers by component.layers.subscribeAsState()
-    val selectionIsActive by component.selectionIsActive.subscribeAsState()
+    val layerIsFrozen by component.layersAreFrozen.subscribeAsState()
 
     val density = LocalDensity.current
 
     val textMeasurer = rememberTextMeasurer()
     val textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
-    val height = with(density) {textMeasurer.measure("0p.", textStyle).size.height.toDp() }
+    val timesHeight = with(density) {textMeasurer.measure("0p.", textStyle).size.height.toDp() }
+
+    val crossWidth = with(density) {textMeasurer.measure("✕").size.width.toDp()}
 
     val textYCoords = remember { mutableStateMapOf<Int, SnapshotStateList<Dp>>() }
     LaunchedEffect(strings.size, layers.size) {
@@ -115,24 +117,31 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                     )
 
                     Row {
-                        Box(
-                            Modifier
-                                .fillMaxHeight()
-                                .wrapContentWidth()
-                                .onGloballyPositioned({ coordinates ->  boxYCoord = with(density) { coordinates.positionInRoot().y.toDp() } })
-                        ) {
-                            for ((_, coordinateList) in textYCoords) {
-                                for (yCoord in coordinateList) {
-                                    BasicButton(
-                                        onClick = { println("delete") },
-                                        modifier = Modifier
-                                            .align(Alignment.CenterStart)
-                                            .offset(y = yCoord - boxYCoord)
-                                    ) {
-                                        Text("✕")
+                        if (layers.isNotEmpty()) {
+                            Box(
+                                Modifier
+                                    .fillMaxHeight()
+                                    .wrapContentWidth()
+                                    .onGloballyPositioned({ coordinates ->
+                                        boxYCoord =
+                                            with(density) { coordinates.positionInRoot().y.toDp() }
+                                    })
+                            ) {
+                                for ((layerIdx, coordinateList) in textYCoords) {
+                                    for (yCoord in coordinateList) {
+                                        BasicButton(
+                                            onClick = { component.onDeleteLayerClick(layerIdx) },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterStart)
+                                                .offset(y = yCoord - boxYCoord)
+                                        ) {
+                                            Text("✕")
+                                        }
                                     }
                                 }
                             }
+                        } else {
+                            Spacer(Modifier.width((crossWidth.value + 2 * 8).dp).fillMaxHeight())
                         }
 
                         Column(Modifier.horizontalScroll(rememberScrollState())) {
@@ -141,6 +150,11 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                                     SongLayerContent(
                                         layer,
                                         strIdx,
+                                        onExitAnimationFinished = {
+                                            if (strIdx == 0) {
+                                                component.onLayerHidden(layer.id)
+                                            }
+                                        },
                                         Modifier
                                             .padding(horizontal = SPACING_TEXT.dp)
                                             .onGloballyPositioned { coordinates ->
@@ -154,12 +168,12 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                                     )
                                 }
                                 AnimatedVisibility(
-                                    visible = !selectionIsActive,
+                                    visible = layerIsFrozen,
                                     enter = expandVertically(expandFrom = Alignment.Top),
                                     exit = ExitTransition.None
                                 ) {
                                     Spacer(
-                                        Modifier.fillMaxWidth().height((height.value + 4 * 4).dp)
+                                        Modifier.fillMaxWidth().height((timesHeight.value + 4 * 4).dp)
                                     )
                                 }
 

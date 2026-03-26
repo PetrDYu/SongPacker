@@ -2,6 +2,7 @@ package ru.petr.songpacker.packer.songPart.songLayer
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.childContext
+import com.arkivanov.decompose.value.Value
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.ArrowRange
@@ -11,6 +12,12 @@ import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.RepeatSongLa
 interface SongLayerComponent {
 
     val id: Int
+
+    val visible: Value<Boolean>
+
+    fun onShow()
+
+    fun delete()
 
     companion object {
         private var currentId = 0
