@@ -5,6 +5,8 @@ import com.arkivanov.decompose.childContext
 import com.arkivanov.decompose.value.Value
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordSongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.DefaultChordSongLayerComponent
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.ArrowRange
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.DefaultRepeatSongLayerComponent
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.RepeatSongLayerComponent
@@ -21,6 +23,16 @@ interface SongLayerComponent {
 
     companion object {
         private var currentId = 0
+        private const val CHORD_LAYER_ID = -1
+
+        @OptIn(ExperimentalUuidApi::class)
+        fun buildChordSongLayer(parentComponentContext: ComponentContext): ChordSongLayerComponent {
+            val key = "DefaultChordSongLayerComponent-${Uuid.random()}"
+            return DefaultChordSongLayerComponent(
+                parentComponentContext.childContext(key),
+                CHORD_LAYER_ID
+            )
+        }
 
         @OptIn(ExperimentalUuidApi::class)
         fun buildRepeatSongLayer(parentComponentContext: ComponentContext): RepeatSongLayerComponent {

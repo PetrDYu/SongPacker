@@ -24,6 +24,13 @@ class DefaultPackerComponent(
     private val _songParts = MutableValue(listOf<SongPartComponent>())
     override val songParts: Value<List<SongPartComponent>> = _songParts
 
+    private val _songMetadata = MutableValue(SongMetadata())
+    override val songMetadata: Value<SongMetadata> = _songMetadata
+
+    override fun onUpdateMetadata(metadata: SongMetadata) {
+        _songMetadata.value = metadata
+    }
+
     override fun onAddSongPart(type: SongPartTypes) {
         if (newText.value.isNotBlank()) {
             val mutableSongPartsList = _songParts.value.toMutableList()
@@ -46,6 +53,14 @@ class DefaultPackerComponent(
             _songParts.value = mutableSongPartsList
             _newText.value = ""
         }
+    }
+
+    override fun onMoveSongPart(fromIndex: Int, toIndex: Int) {
+        val list = _songParts.value.toMutableList()
+        if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return
+        val item = list.removeAt(fromIndex)
+        list.add(toIndex, item)
+        _songParts.value = list
     }
 
     override fun clearAllSelections() {

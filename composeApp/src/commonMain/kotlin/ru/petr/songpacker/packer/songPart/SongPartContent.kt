@@ -60,7 +60,12 @@ import ru.petr.songpacker.packer.songPart.songLayer.SongLayerContent
 private const val SPACING_TEXT = 4
 
 @Composable
-fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier) {
+fun SongPartContent(
+    component: SongPartComponent,
+    verseNumber: Int? = null,
+    dragHandleModifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
+) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -88,6 +93,13 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
 
     var boxYCoord by remember {  mutableStateOf(0.dp)}
 
+    // Compute display title based on type and verse number
+    val displayTitle = when {
+        type != SongPartTypes.VERSE -> type.displayName
+        verseNumber == null || verseNumber == 0 -> type.displayName
+        else -> "${type.displayName} $verseNumber"
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(initialOffsetY = { -40 }) + fadeIn(),
@@ -108,13 +120,31 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text(
-                        text = type.displayName,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
+                    // Header row: drag handle + title
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(bottom = 12.dp)
-                    )
+                    ) {
+                        Box(
+                            modifier = dragHandleModifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "☰",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = displayTitle,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
                     Row {
                         if (layers.isNotEmpty()) {
@@ -132,7 +162,7 @@ fun SongPartContent(component: SongPartComponent, modifier: Modifier = Modifier)
                                         BasicButton(
                                             onClick = { component.onDeleteLayerClick(layerIdx) },
                                             modifier = Modifier
-                                                .align(Alignment.CenterStart)
+                                                .align(Alignment.TopStart)
                                                 .offset(y = yCoord - boxYCoord)
                                         ) {
                                             Text("✕")

@@ -13,5 +13,11 @@ interface PackerComponent {
     val songParts: Value<List<SongPartComponent>>
     fun onAddSongPart(type: SongPartTypes)
 
+    fun onMoveSongPart(fromIndex: Int, toIndex: Int)
+
     fun clearAllSelections()
+
+    val songMetadata: Value<SongMetadata>
+
+    fun onUpdateMetadata(metadata: SongMetadata)
 }

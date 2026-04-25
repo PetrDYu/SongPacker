@@ -9,6 +9,8 @@ interface RepeatSongLayerComponent: SongLayerComponent {
 
     val repeatQtyStr: Value<String>
 
+    val repeatRange: Value<IntRange>
+
     fun onChangeRepeatQty(repeatQtyStr: String)
 
     fun update(newRepeatRange: IntRange,

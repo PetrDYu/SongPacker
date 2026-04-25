@@ -10,6 +10,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordSongLayerComponent
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.ArrowRange
 
 class DefaultSongPartComponent(
@@ -43,6 +44,9 @@ class DefaultSongPartComponent(
 
     private val _layersAreFrozen = MutableValue(true)
     override val layersAreFrozen: Value<Boolean> = _layersAreFrozen
+
+    // Single chord layer shared across all taps; created lazily on first tap
+    private var chordSongLayer: ChordSongLayerComponent? = null
 
     private val rightSelectionRange: IntRange
         get() = if (selectionRange.first < selectionRange.last) {
@@ -103,6 +107,19 @@ class DefaultSongPartComponent(
 
     override fun onTextTap(stringIdx: Int, offset: Offset) {
         clearSelection()
+        // Ensure chord layer exists (re-create if deleted)
+        var layer = chordSongLayer
+        if (layer == null || !_layers.value.any { it.id == layer.id }) {
+            layer = SongLayerComponent.buildChordSongLayer(this)
+            chordSongLayer = layer
+            _layers.value = listOf(layer) + _layers.value.filter { it !is ChordSongLayerComponent }
+        }
+        textLayoutResults[stringIdx]?.let { layoutResult ->
+            val localCharIdx = layoutResult.getOffsetForPosition(offset)
+            val absoluteCharOffset = stringRanges[stringIdx].first + localCharIdx
+            val xPosition = layoutResult.getHorizontalPosition(localCharIdx, true)
+            layer.onTextTap(stringIdx, absoluteCharOffset, xPosition)
+        }
     }
 
     override fun onTextDragStart(stringIdx: Int, offset: Offset) {
