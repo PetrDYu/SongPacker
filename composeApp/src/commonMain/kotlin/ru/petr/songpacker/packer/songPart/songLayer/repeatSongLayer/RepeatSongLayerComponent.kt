@@ -15,6 +15,9 @@ interface RepeatSongLayerComponent: SongLayerComponent {
 
     fun update(newRepeatRange: IntRange,
                newArrowRanges: List<ArrowRange>)
+
+    /** Load repeat data from XML without visual arrow computation. */
+    fun loadRepeat(range: IntRange, qty: Int)
 }
 
 data class ArrowRange(

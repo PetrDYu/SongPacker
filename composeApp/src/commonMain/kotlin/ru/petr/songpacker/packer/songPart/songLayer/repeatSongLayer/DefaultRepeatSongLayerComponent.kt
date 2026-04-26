@@ -50,4 +50,10 @@ class DefaultRepeatSongLayerComponent(
     override fun delete() {
         _visible.value = false
     }
+
+    override fun loadRepeat(range: IntRange, qty: Int) {
+        _repeatRange.value = range
+        _arrowRanges.value = emptyList()  // visual arrows not computed for loaded repeats
+        _repeatQtyStr.value = if (qty > 0) qty.toString() else "0"
+    }
 }

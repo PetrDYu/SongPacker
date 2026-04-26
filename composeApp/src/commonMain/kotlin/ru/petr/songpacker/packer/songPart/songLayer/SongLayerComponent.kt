@@ -63,5 +63,10 @@ interface SongLayerComponent {
         fun freezeCurrentRepeatSongLayer() {
             currentId++
         }
+
+        /** Reset the repeat-layer counter. Call before importing a new song. */
+        fun resetCurrentId() {
+            currentId = 0
+        }
     }
 }

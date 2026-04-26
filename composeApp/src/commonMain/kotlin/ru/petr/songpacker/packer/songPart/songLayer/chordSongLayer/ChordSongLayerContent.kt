@@ -124,7 +124,7 @@ fun ChordSelectionDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (initialChord != null) "Edit chord" else "Add chord",
+                    text = if (initialChord != null) "Изменить аккорд" else "Добавить аккорд",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -132,7 +132,7 @@ fun ChordSelectionDialog(
 
                 // Base note selection
                 Text(
-                    text = "Note",
+                    text = "Нота",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -171,7 +171,7 @@ fun ChordSelectionDialog(
 
                     // Accidental selection
                     Text(
-                        text = "Accidental",
+                        text = "Альтерация",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -211,7 +211,7 @@ fun ChordSelectionDialog(
 
                     // Quality selection
                     Text(
-                        text = "Quality",
+                        text = "Тип",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -220,8 +220,8 @@ fun ChordSelectionDialog(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(
-                            ChordQuality.MAJOR to "Major",
-                            ChordQuality.MINOR to "Minor"
+                            ChordQuality.MAJOR to "Мажор",
+                            ChordQuality.MINOR to "Минор"
                         ).forEach { (quality, label) ->
                             val isSelected = selectedQuality == quality
                             Box(
@@ -255,7 +255,7 @@ fun ChordSelectionDialog(
                         modifier = Modifier.align(Alignment.Start)
                     ) {
                         Text(
-                            text = "Seventh (7)",
+                            text = "Септаккорд (7)",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -306,7 +306,7 @@ fun ChordSelectionDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "Remove",
+                                        text = "Удалить",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onErrorContainer
@@ -324,7 +324,7 @@ fun ChordSelectionDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "Place",
+                                    text = "Поставить",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onPrimary

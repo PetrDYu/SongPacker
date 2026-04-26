@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ru.petr.songpacker.openXmlFile
 import ru.petr.songpacker.saveXmlFile
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,8 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import ru.petr.songpacker.packer.songPart.SongPartContent
 import ru.petr.songpacker.packer.songPart.SongPartTypes
 
+private enum class PendingAction { NEW_SONG, IMPORT }
+
 @Composable
 fun PackerContent(component: PackerComponent, modifier: Modifier = Modifier) {
     val songParts by component.songParts.subscribeAsState()
@@ -59,6 +62,39 @@ fun PackerContent(component: PackerComponent, modifier: Modifier = Modifier) {
 
     // Save result dialog
     var saveResultMessage by remember { mutableStateOf<String?>(null) }
+
+    // New / Import: "save first?" dialog
+    var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
+    var showUnsavedDialog by remember { mutableStateOf(false) }
+
+    /** Execute the pending New/Import action */
+    fun executePending() {
+        when (pendingAction) {
+            PendingAction.NEW_SONG -> {
+                component.onNewSong()
+                showMetadataDialog = true
+            }
+            PendingAction.IMPORT -> {
+                val (_, content) = openXmlFile() ?: return
+                val parsed = parseXmlSong(content)
+                if (parsed != null) {
+                    component.onImportSong(parsed)
+                } else {
+                    saveResultMessage = "Ошибка: не удалось разобрать XML-файл"
+                }
+            }
+            null -> Unit
+        }
+        pendingAction = null
+    }
+
+    /** Ask whether to save, then execute pending action */
+    fun requestAction(action: PendingAction) {
+        val hasSong = songParts.isNotEmpty() || songMetadata.number.isNotBlank()
+        pendingAction = action
+        if (hasSong) showUnsavedDialog = true
+        else executePending()
+    }
 
     // Drag and drop state
     var draggingIndex by remember { mutableIntStateOf(-1) }
@@ -121,20 +157,28 @@ fun PackerContent(component: PackerComponent, modifier: Modifier = Modifier) {
             },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Header row: title + metadata button
+        // Header: title
+        Text(
+            text = "Song Packer",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+
+        // Action buttons row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         ) {
-            Text(
-                text = "Song Packer",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            TextButton(onClick = { requestAction(PendingAction.NEW_SONG) }) {
+                Text("📄 Новая")
+            }
+            TextButton(onClick = { requestAction(PendingAction.IMPORT) }) {
+                Text("📥 Импорт")
+            }
             TextButton(onClick = { showMetadataDialog = true }) {
                 Text("⚙ Метаданные")
             }
@@ -312,6 +356,49 @@ fun PackerContent(component: PackerComponent, modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+
+    // "Save current song first?" dialog
+    if (showUnsavedDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showUnsavedDialog = false
+                pendingAction = null
+            },
+            title = { Text("Сохранить текущую песню?") },
+            text = { Text("Перед тем как продолжить, хотите сохранить текущую песню?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnsavedDialog = false
+                    // Save first, then execute
+                    if (songMetadata.number.isBlank()) {
+                        showMetadataDialog = true  // ask for number first
+                    } else {
+                        val xml = generateSongXml(songMetadata, songParts)
+                        val fileName = buildSongFileName(songMetadata, songParts)
+                        val result = saveXmlFile(fileName, xml)
+                        if (!result.startsWith("Error:") && result != "Cancelled") {
+                            executePending()
+                        } else {
+                            saveResultMessage = result
+                            pendingAction = null
+                        }
+                    }
+                }) { Text("Сохранить") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showUnsavedDialog = false
+                        executePending()
+                    }) { Text("Не сохранять") }
+                    TextButton(onClick = {
+                        showUnsavedDialog = false
+                        pendingAction = null
+                    }) { Text("Отмена") }
+                }
+            }
+        )
     }
 
     // Save result dialog

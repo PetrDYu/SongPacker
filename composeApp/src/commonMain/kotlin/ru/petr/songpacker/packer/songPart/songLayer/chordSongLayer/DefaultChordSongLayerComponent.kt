@@ -1,5 +1,6 @@
 package ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer
 
+import androidx.compose.ui.text.TextLayoutResult
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
@@ -64,5 +65,29 @@ class DefaultChordSongLayerComponent(
         updatedChords.removeAll { it.stringIdx == stringIdx && it.charOffset == charOffset }
         _chords.value = updatedChords
         _pendingTap.value = PendingTap.NONE
+    }
+
+    override fun loadChords(chords: List<ChordPlacement>) {
+        _chords.value = chords
+    }
+
+    override fun onStringLayout(
+        stringIdx: Int,
+        layoutResult: TextLayoutResult,
+        stringAbsoluteStart: Int
+    ) {
+        // Only recalculate chords that have the sentinel xPosition (-1f)
+        val needsRecalc = _chords.value.any { it.stringIdx == stringIdx && it.xPosition < 0f }
+        if (!needsRecalc) return
+
+        val textLength = layoutResult.layoutInput.text.length
+        _chords.value = _chords.value.map { placement ->
+            if (placement.stringIdx == stringIdx && placement.xPosition < 0f) {
+                val localIdx = (placement.charOffset - stringAbsoluteStart).coerceIn(0, textLength)
+                placement.copy(xPosition = layoutResult.getHorizontalPosition(localIdx, true))
+            } else {
+                placement
+            }
+        }
     }
 }

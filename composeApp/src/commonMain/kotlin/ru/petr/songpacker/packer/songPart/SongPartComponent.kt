@@ -7,6 +7,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.TextLayoutResult
 import com.arkivanov.decompose.value.Value
 import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordPlacement
 
 interface SongPartComponent {
     val id: String
@@ -37,6 +38,12 @@ interface SongPartComponent {
     fun onDeleteLayerClick(layerIdx: Int)
 
     fun onLayerHidden(layerId: Int)
+
+    /** Load a chord layer from imported data (positions recalculated after first layout). */
+    fun loadChordLayer(chords: List<ChordPlacement>)
+
+    /** Add a repeat layer from imported data (visual arrows recalculated lazily). */
+    fun loadRepeatLayer(range: IntRange, qty: Int)
 }
 
 enum class SongPartTypes(val displayName: String) {

@@ -56,6 +56,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.Dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import ru.petr.songpacker.packer.songPart.songLayer.SongLayerContent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordSongLayerComponent
 
 private const val SPACING_TEXT = 4
 
@@ -176,7 +177,9 @@ fun SongPartContent(
 
                         Column(Modifier.horizontalScroll(rememberScrollState())) {
                             for ((strIdx, string) in strings.withIndex()) {
+                                // Repeat layers (and any other non-chord layers)
                                 for ((layerIdx, layer) in layers.withIndex()) {
+                                    if (layer is ChordSongLayerComponent) continue
                                     SongLayerContent(
                                         layer,
                                         strIdx,
@@ -204,6 +207,29 @@ fun SongPartContent(
                                 ) {
                                     Spacer(
                                         Modifier.fillMaxWidth().height((timesHeight.value + 4 * 4).dp)
+                                    )
+                                }
+                                // Chord layer rendered separately, directly above the text line
+                                for ((layerIdx, layer) in layers.withIndex()) {
+                                    if (layer !is ChordSongLayerComponent) continue
+                                    SongLayerContent(
+                                        layer,
+                                        strIdx,
+                                        onExitAnimationFinished = {
+                                            if (strIdx == 0) {
+                                                component.onLayerHidden(layer.id)
+                                            }
+                                        },
+                                        Modifier
+                                            .padding(horizontal = SPACING_TEXT.dp)
+                                            .onGloballyPositioned { coordinates ->
+                                                val y = with(density) { coordinates.positionInRoot().y.toDp() }
+                                                val list = textYCoords.getOrPut(layerIdx) {
+                                                    MutableList(strings.size) { 0.dp }.toMutableStateList()
+                                                }
+                                                while (list.size <= strIdx) list.add(0.dp)
+                                                list[strIdx] = y
+                                            }
                                     )
                                 }
 

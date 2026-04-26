@@ -7,6 +7,7 @@ import com.arkivanov.decompose.value.Value
 import ru.petr.songpacker.packer.songPart.DefaultSongPartComponent
 import ru.petr.songpacker.packer.songPart.SongPartComponent
 import ru.petr.songpacker.packer.songPart.SongPartTypes
+import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
 
 import kotlin.random.Random
 
@@ -65,5 +66,49 @@ class DefaultPackerComponent(
 
     override fun clearAllSelections() {
         _songParts.value.forEach { it.clearSelection() }
+    }
+
+    override fun onNewSong() {
+        _songParts.value = emptyList()
+        _songMetadata.value = SongMetadata()
+        _newText.value = ""
+        SongLayerComponent.resetCurrentId()
+    }
+
+    override fun onImportSong(song: ParsedSong) {
+        SongLayerComponent.resetCurrentId()
+
+        val newParts = mutableListOf<SongPartComponent>()
+
+        for (parsedPart in song.parts) {
+            val id = "SongPart_${Random.nextInt()}_${newParts.size}"
+            val childCtx = childContext(key = id)
+
+            val (stringTexts, chordPlacements, repeatRanges) = computePartData(parsedPart)
+            val initialText = stringTexts.joinToString("\n")
+
+            val part = DefaultSongPartComponent(
+                componentContext = childCtx,
+                id = id,
+                initialType = parsedPart.type,
+                initialText = initialText
+            )
+
+            // Load repeat layers first (so they end up before the chord layer)
+            for ((range, qty) in repeatRanges) {
+                part.loadRepeatLayer(range, qty)
+            }
+
+            // Load chord layer (xPositions will be recalculated after first text layout)
+            if (chordPlacements.isNotEmpty()) {
+                part.loadChordLayer(chordPlacements)
+            }
+
+            newParts.add(part)
+        }
+
+        _songParts.value = newParts
+        _songMetadata.value = song.metadata
+        _newText.value = ""
     }
 }

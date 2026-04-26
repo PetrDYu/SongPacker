@@ -38,7 +38,7 @@ fun RepeatSongLayerContent(
     val repeatQtyStr by component.repeatQtyStr.subscribeAsState()
     Arrow(
         modifier = modifier.padding(vertical = 4.dp),
-        arrowRange = arrowRanges[stringIdx],
+        arrowRange = arrowRanges.getOrElse(stringIdx) { ArrowRange.emptyArrowRange },
         textValue = repeatQtyStr,
         onValueChange = component::onChangeRepeatQty,
     )

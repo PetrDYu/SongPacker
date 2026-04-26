@@ -63,7 +63,10 @@ fun generateSongXml(metadata: SongMetadata, parts: List<SongPartComponent>): Str
             sb.appendLine("        <string>")
 
             val stringStart = stringStarts[strIdx]
+            // stringEnd is the last VALID char index; stringEndInclusive extends by 1
+            // to capture range.last == stringStart + string.length (drag past end of line)
             val stringEnd = stringStart + string.length - 1
+            val stringEndInclusive = stringStart + string.length
 
             // Each event: (charPosition, sortPriority, tieBreakSize, xmlFragment)
             // charPosition: position in string where event is placed (text before this pos, then event)
@@ -94,9 +97,12 @@ fun generateSongXml(metadata: SongMetadata, parts: List<SongPartComponent>): Str
                     events.add(Event(localPos, 0, -rangeSize, buildRepeatOpenXml(localId)))
                 }
 
-                // Closing bracket: in the string containing range.last
-                if (range.last in stringStart..stringEnd.coerceAtLeast(stringStart)) {
-                    val localPos = range.last - stringStart + 1
+                // Closing bracket: in the string containing range.last.
+                // Use stringEndInclusive so that "drag past end of line" (range.last == stringStart + string.length)
+                // is still treated as belonging to this string.
+                if (range.last in stringStart..stringEndInclusive.coerceAtLeast(stringStart)) {
+                    // Clamp to string.length so substring() never goes out of bounds
+                    val localPos = (range.last - stringStart + 1).coerceAtMost(string.length)
                     // Smaller range (inner bracket) closes first → tieBreak = +rangeSize (ascending = smaller first)
                     events.add(Event(localPos, 2, rangeSize, buildRepeatCloseXml(localId, qty)))
                 }

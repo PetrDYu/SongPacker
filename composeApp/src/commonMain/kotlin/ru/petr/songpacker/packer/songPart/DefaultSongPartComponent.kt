@@ -10,8 +10,11 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import ru.petr.songpacker.packer.songPart.songLayer.SongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordPlacement
 import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.ChordSongLayerComponent
+import ru.petr.songpacker.packer.songPart.songLayer.chordSongLayer.DefaultChordSongLayerComponent
 import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.ArrowRange
+import ru.petr.songpacker.packer.songPart.songLayer.repeatSongLayer.RepeatSongLayerComponent
 
 class DefaultSongPartComponent(
     componentContext: ComponentContext,
@@ -96,6 +99,14 @@ class DefaultSongPartComponent(
 
     override fun onTextLayout(stringIdx: Int, textLayoutResult: TextLayoutResult) {
         textLayoutResults[stringIdx] = textLayoutResult
+        // Recalculate imported chord x-positions after the text is measured
+        (chordSongLayer as? DefaultChordSongLayerComponent)?.onStringLayout(
+            stringIdx,
+            textLayoutResult,
+            stringRanges.getOrNull(stringIdx)?.first ?: 0
+        )
+        // Recalculate repeat arrow ranges once all strings are laid out
+        recalcLoadedRepeatArrows()
     }
 
     override fun onTextPositioned(
@@ -112,10 +123,17 @@ class DefaultSongPartComponent(
         if (layer == null || !_layers.value.any { it.id == layer.id }) {
             layer = SongLayerComponent.buildChordSongLayer(this)
             chordSongLayer = layer
-            _layers.value = listOf(layer) + _layers.value.filter { it !is ChordSongLayerComponent }
+            // Chord layer always goes last so it renders directly above the text line
+            _layers.value = _layers.value.filter { it !is ChordSongLayerComponent } + layer
         }
         textLayoutResults[stringIdx]?.let { layoutResult ->
-            val localCharIdx = layoutResult.getOffsetForPosition(offset)
+            // getOffsetForPosition snaps to the nearest boundary; when tapping the right
+            // half of a character it returns the boundary AFTER that character.
+            // We correct this so the chord always appears BEFORE the tapped character.
+            val rawIdx = layoutResult.getOffsetForPosition(offset)
+            val localCharIdx = if (rawIdx > 0 &&
+                offset.x < layoutResult.getHorizontalPosition(rawIdx, true)
+            ) rawIdx - 1 else rawIdx
             val absoluteCharOffset = stringRanges[stringIdx].first + localCharIdx
             val xPosition = layoutResult.getHorizontalPosition(localCharIdx, true)
             layer.onTextTap(stringIdx, absoluteCharOffset, xPosition)
@@ -135,7 +153,11 @@ class DefaultSongPartComponent(
             }
         }
         val updatedLayers = _layers.value.toMutableList()
-        updatedLayers.add(SongLayerComponent.buildRepeatSongLayer(parentComponentContext = this))
+        val newRepeatLayer = SongLayerComponent.buildRepeatSongLayer(parentComponentContext = this)
+        // Insert before the chord layer so chords always stay directly above the text
+        val chordIdx = updatedLayers.indexOfFirst { it is ChordSongLayerComponent }
+        if (chordIdx >= 0) updatedLayers.add(chordIdx, newRepeatLayer)
+        else updatedLayers.add(newRepeatLayer)
         _layers.value = updatedLayers
     }
 
@@ -198,6 +220,83 @@ class DefaultSongPartComponent(
 
     override fun onLayerHidden(layerId: Int) {
         deleteLayer(layerId)
+    }
+
+    override fun loadChordLayer(chords: List<ChordPlacement>) {
+        if (chords.isEmpty()) return
+        val layer = SongLayerComponent.buildChordSongLayer(this)
+        (layer as DefaultChordSongLayerComponent).loadChords(chords)
+        chordSongLayer = layer
+        // Chord layer stays last (renders directly above text)
+        _layers.value = _layers.value.filter { it !is ChordSongLayerComponent } + layer
+    }
+
+    override fun loadRepeatLayer(range: IntRange, qty: Int) {
+        val layer = SongLayerComponent.buildRepeatSongLayer(this)
+        SongLayerComponent.freezeCurrentRepeatSongLayer()
+        layer.loadRepeat(range, qty)
+        // Insert before the chord layer
+        val updatedLayers = _layers.value.toMutableList()
+        val chordIdx = updatedLayers.indexOfFirst { it is ChordSongLayerComponent }
+        if (chordIdx >= 0) updatedLayers.add(chordIdx, layer)
+        else updatedLayers.add(layer)
+        _layers.value = updatedLayers
+    }
+
+    /**
+     * For each repeat layer loaded from XML (arrowRanges is empty), computes and sets
+     * the visual arrow positions once all string text layouts are available.
+     */
+    private fun recalcLoadedRepeatArrows() {
+        // Only proceed when every string has been measured
+        if (textLayoutResults.any { it == null }) return
+
+        val loadedRepeatLayers = _layers.value
+            .filterIsInstance<RepeatSongLayerComponent>()
+            .filter { it.arrowRanges.value.isEmpty() }
+
+        if (loadedRepeatLayers.isEmpty()) return
+
+        for (repeatLayer in loadedRepeatLayers) {
+            val range = repeatLayer.repeatRange.value
+            val arrowRanges = computeArrowRangesForRange(range)
+            if (arrowRanges.isNotEmpty()) {
+                repeatLayer.update(range, arrowRanges)
+            }
+        }
+    }
+
+    /**
+     * Computes pixel-level [ArrowRange] entries for each string covered by [range],
+     * matching the same logic used in [recalcSelection].
+     * Returns an empty list if any required [TextLayoutResult] is not yet available.
+     */
+    private fun computeArrowRangesForRange(range: IntRange): List<ArrowRange> {
+        val result = mutableListOf<ArrowRange>()
+        var firstSelectedString = true
+        for (stringIdx in 0..<_strings.value.size) {
+            val stringStart = stringRanges[stringIdx].first
+            val stringEnd = stringRanges[stringIdx].second  // stringStart + string.length
+            if (range.first <= stringEnd && stringStart <= range.last) {
+                val firstCharIdx = maxOf(range.first, stringStart) - stringStart
+                val lastCharIdx = minOf(range.last, stringEnd) - stringStart
+                val arrowStartEnding = firstSelectedString
+                val arrowEndEnding = range.last <= stringEnd
+                val layout = textLayoutResults[stringIdx] ?: return emptyList()
+                result.add(
+                    ArrowRange(
+                        start = layout.getHorizontalPosition(firstCharIdx, true),
+                        startEnding = arrowStartEnding,
+                        end = layout.getHorizontalPosition(lastCharIdx, false),
+                        endEnding = arrowEndEnding
+                    )
+                )
+                firstSelectedString = false
+            } else {
+                result.add(ArrowRange.emptyArrowRange)
+            }
+        }
+        return result
     }
 
     private fun deleteLayer(layerId: Int) {
